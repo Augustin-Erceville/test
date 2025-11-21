@@ -52,7 +52,6 @@ jobs:
                 description: $desc,
                 url: $url,
                 timestamp: $timestamp,
-                footer: { text: $footer },
                 fields: [
                   { name: "Branche", value: $branch, inline: true },
                   { name: "Auteur", value: $author, inline: true },
