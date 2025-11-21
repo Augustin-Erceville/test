@@ -31,6 +31,10 @@ jobs:
             DESCRIPTION="(Aucune description fournie)"
           fi
 
+          # Timestamps
+          ISO_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"           # pour le champ timestamp
+          HUMAN_TIMESTAMP="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"      # pour le footer
+
           # Construction du JSON de l'embed avec jq
           jq -n \
             --arg repo "$REPO" \
@@ -39,12 +43,16 @@ jobs:
             --arg url "$COMMIT_URL" \
             --arg title "$TITLE" \
             --arg desc "$DESCRIPTION" \
+            --arg timestamp "$ISO_TIMESTAMP" \
+            --arg footer "$HUMAN_TIMESTAMP" \
           '{
             embeds: [
               {
                 title: $title,
                 description: $desc,
                 url: $url,
+                timestamp: $timestamp,
+                footer: { text: $footer },
                 fields: [
                   { name: "Branche", value: $branch, inline: true },
                   { name: "Auteur", value: $author, inline: true },
