@@ -3,7 +3,7 @@ name: Discord Commit Notification
 on:
   push:
     branches:
-      - main   # adapte si tu veux d'autres branches
+      - main   # adapte si besoin
 
 jobs:
   notify-discord:
@@ -16,52 +16,76 @@ jobs:
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
-          AUTHOR_AVATAR: ${{ github.event.sender.avatar_url }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.author.email }}
+          # username quand dispo, sinon fallback sur l'acteur
+          AUTHOR_LOGIN: ${{ github.event.head_commit.author.username || github.actor }}
           SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # URL HTML du commit
+          # URL HTML du dernier commit
           COMMIT_URL="https://github.com/$REPO/commit/$SHA"
 
-          # Nom du commit = 1ère ligne du message
-          TITLE="$(printf "%s" "$COMMIT_MESSAGE" | sed -n '1p')"
+          # SHA court pour affichage
+          SHORT_SHA="${SHA:0:7}"
 
-          # Description = le reste (éventuellement vide)
-          DESCRIPTION="$(printf "%s" "$COMMIT_MESSAGE" | sed '1d')"
-          if [ -z "$DESCRIPTION" ]; then
-            DESCRIPTION="(Aucune description fournie)"
-          fi
+          # Avatar GitHub de l'auteur (username)
+          AUTHOR_AVATAR="https://github.com/$AUTHOR_LOGIN.png"
 
-          # Timestamps
-          ISO_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          HUMAN_TIMESTAMP="Commit généré le $(date -u +"%d/%m/%Y à %H:%M:%S UTC")"
+          # Description = liste des commits du push
+          # - `abc1234` – First line of commit message
+          DESCRIPTION="$(jq -r '
+            .commits
+            | map("- `" + (.id[0:7]) + "` – " + ( .message | split("\n")[0] ))
+            | join("\n")
+          ' "$GITHUB_EVENT_PATH")"
+
+          # Timestamp pour le footer
+          FOOTER_TIMESTAMP="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+          # Récupération des stats du dernier commit via l’API GitHub
+          curl -s \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/commits/$SHA" \
+            -o commit_details.json
+
+          ADDITIONS="$(jq -r '.stats.additions // 0' commit_details.json)"
+          DELETIONS="$(jq -r '.stats.deletions // 0' commit_details.json)"
 
           # Construction du JSON de l'embed avec jq
           jq -n \
             --arg repo "$REPO" \
             --arg branch "$BRANCH" \
             --arg author_name "$AUTHOR_NAME" \
+            --arg author_email "$AUTHOR_EMAIL" \
+            --arg author_login "$AUTHOR_LOGIN" \
             --arg author_avatar "$AUTHOR_AVATAR" \
-            --arg url "$COMMIT_URL" \
-            --arg title "$TITLE" \
+            --arg commit_url "$COMMIT_URL" \
+            --arg short_sha "$SHORT_SHA" \
             --arg desc "$DESCRIPTION" \
-            --arg timestamp "$ISO_TIMESTAMP" \
-            --arg footer "$HUMAN_TIMESTAMP" \
+            --arg footer_ts "$FOOTER_TIMESTAMP" \
+            --arg additions "$ADDITIONS" \
+            --arg deletions "$DELETIONS" \
           '{
             embeds: [
               {
-                title: $title,
+                title: ("`" + $short_sha + "`"),
+                url: $commit_url,
                 description: $desc,
-                url: $url,
-                timestamp: $timestamp,
                 author: {
-                  name: $author_name,
+                  name: $author_login,
                   icon_url: $author_avatar
                 },
+                footer: {
+                  text: $footer_ts
+                },
                 fields: [
+                  { name: "Dépôt", value: $repo, inline: true },
                   { name: "Branche", value: $branch, inline: true },
                   { name: "Auteur", value: $author_name, inline: true },
-                  { name: "Dépôt", value: $repo, inline: false }
+                  { name: "Email auteur", value: $author_email, inline: true },
+                  { name: "Lignes ajoutées", value: ("+" + $additions), inline: true },
+                  { name: "Lignes supprimées", value: ("-" + $deletions), inline: true }
                 ]
               }
             ]
