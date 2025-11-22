@@ -72,12 +72,13 @@ jobs:
                 title: ("`" + $short_sha + "`"),
                 url: $commit_url,
                 description: $desc,
+                timestamp: $timestamp,
                 author: {
                   name: $author_login,
                   icon_url: $author_avatar
                 },
                 footer: {
-                  text: $footer_ts
+                  text: $branch
                 },
                 fields: [
                   { name: "Dépôt", value: $repo, inline: true },
