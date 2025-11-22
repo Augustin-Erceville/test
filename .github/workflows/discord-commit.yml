@@ -40,7 +40,7 @@ jobs:
           ' "$GITHUB_EVENT_PATH")"
 
           # Timestamp pour le footer
-          FOOTER_TIMESTAMP="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          ISO_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
           # Récupération des stats du dernier commit via l’API GitHub
           curl -s \
