@@ -59,6 +59,7 @@ jobs:
             --arg author_name "$AUTHOR_NAME" \
             --arg author_email "$AUTHOR_EMAIL" \
             --arg author_login "$AUTHOR_LOGIN" \
+            --arg timestamp "$ISO_TIMESTAMP" \
             --arg author_avatar "$AUTHOR_AVATAR" \
             --arg commit_url "$COMMIT_URL" \
             --arg short_sha "$SHORT_SHA" \
@@ -77,9 +78,7 @@ jobs:
                   name: $author_login,
                   icon_url: $author_avatar
                 },
-                footer: {
-                  text: $branch
-                },
+                footer: { text: $branch },
                 fields: [
                   { name: "Dépôt", value: $repo, inline: true },
                   { name: "Branche", value: $branch, inline: true },
